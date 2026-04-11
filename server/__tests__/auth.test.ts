@@ -1,6 +1,7 @@
 import request from "supertest";
 import { app } from "../src/app";
 import { prisma } from "../src/config/database";
+import { redisService } from "../src/config/redis";
 
 const BASE = "/api/v1/auth";
 
@@ -10,11 +11,21 @@ const validUser = {
   name: "Test User",
 };
 
+// Cleans up all auth-related data between tests that register users.
+// Does NOT call flushAll — preserves any unrelated Redis state.
+const clearUsers = async () => {
+  await prisma.session.deleteMany();
+  await prisma.user.deleteMany({ where: { email: validUser.email } });
+  await redisService.invalidatePattern('session:*');
+};
+
 // ---------------------------------------------------------------------------
 // REGISTER
 // ---------------------------------------------------------------------------
 
 describe("POST /auth/register", () => {
+  afterEach(clearUsers);
+
   it("happy path — returns 201 with token pair", async () => {
     const res = await request(app).post(`${BASE}/register`).send(validUser);
 
@@ -64,6 +75,8 @@ describe("POST /auth/login", () => {
   beforeEach(async () => {
     await request(app).post(`${BASE}/register`).send(validUser);
   });
+
+  afterEach(clearUsers);
 
   it("valid credentials — returns 200 with token pair", async () => {
     const res = await request(app)
@@ -117,6 +130,8 @@ describe("POST /auth/refresh", () => {
     refreshToken = res.body.data.refreshToken;
   });
 
+  afterEach(clearUsers);
+
   it("valid token — returns new token pair", async () => {
     const res = await request(app)
       .post(`${BASE}/refresh`)
@@ -159,6 +174,8 @@ describe("POST /auth/logout", () => {
     accessToken = res.body.data.accessToken;
     refreshToken = res.body.data.refreshToken;
   });
+
+  afterEach(clearUsers);
 
   it("removes session from Redis and DB", async () => {
     const logoutRes = await request(app)

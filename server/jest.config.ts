@@ -18,7 +18,11 @@ const config: Config = {
                     tsconfig: "./tsconfig.test.json",
                 },
             },
-            testMatch: ["**/__tests__/auth.test.ts"],
+            testMatch: ["**/__tests__/**/*.test.ts"],
+            testPathIgnorePatterns: [
+                "/node_modules/",
+                "\\.unit\\.test\\.ts$",  // ← regex על סיומת, לא path מלא
+            ],
             setupFilesAfterEnv: ["<rootDir>/__tests__/setup.ts"],
         },
         {
@@ -30,7 +34,7 @@ const config: Config = {
                     tsconfig: "./tsconfig.test.json",
                 },
             },
-            testMatch: ["**/__tests__/redis.service.test.ts"],
+            testMatch: ["**/__tests__/**/*.unit.test.ts"],
         },
     ],
 };

@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import authRoutes from './routes/auth.routes';
+import taskRoutes from './routes/task.routes';
 import { errorMiddleware } from './middleware/error.middleware';
 
 export const app = express();
@@ -20,6 +21,7 @@ app.get('/health', (_req, res) => {
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/tasks', taskRoutes);
 
 // Error handler
 app.use(errorMiddleware);
