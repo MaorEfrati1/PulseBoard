@@ -1,0 +1,122 @@
+# services:
+#   postgres:
+#     image: postgres:16-alpine
+#     container_name: pulseboard_postgres
+#     restart: unless-stopped
+#     environment:
+#       POSTGRES_USER: postgres
+#       POSTGRES_PASSWORD: postgres
+#       POSTGRES_DB: pulseboard
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U postgres"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+#   redis:
+#     image: redis:7-alpine
+#     container_name: pulseboard_redis
+#     restart: unless-stopped
+#     command: >
+#       redis-server
+#       --appendonly yes
+#       --maxmemory 256mb
+#       --maxmemory-policy allkeys-lru
+#     ports:
+#       - "6379:6379"
+#     volumes:
+#       - redis_data:/data
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+#   # api:
+#   #   build:
+#   #     context: ./server
+#   #     dockerfile: Dockerfile
+#   #   container_name: pulseboard_api
+#   #   restart: unless-stopped
+#   #   # env_file: .env
+#   #   ports:
+#   #     - "4000:4000"
+#   #   depends_on:
+#   #     postgres:
+#   #       condition: service_healthy
+#   #     redis:
+#   #       condition: service_healthy
+#   #   environment:
+#   #     DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pulseboard
+#   #     REDIS_URL: redis://redis:6379
+
+#   redis-commander:
+#     image: rediscommander/redis-commander:latest
+#     container_name: pulseboard_redis_ui
+#     environment:
+#       - REDIS_HOSTS=local:redis:6379
+#     ports:
+#       - "8081:8081"
+#     depends_on:
+#       - redis
+
+# volumes:
+#   postgres_data:
+#   redis_data:
+
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulseboard_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pulseboard
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pulseboard_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: pulseboard_redis_ui
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - '8081:8081'
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
