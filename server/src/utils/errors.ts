@@ -39,3 +39,10 @@ export class ConflictError extends AppError {
     Object.setPrototypeOf(this, ConflictError.prototype);
   }
 }
+
+export class TooManyRequestsError extends AppError {
+  constructor(message = 'Too many requests') {
+    super(message, 429);
+    Object.setPrototypeOf(this, TooManyRequestsError.prototype);
+  }
+}

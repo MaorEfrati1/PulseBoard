@@ -17,7 +17,7 @@ function createClient(name: string): Redis {
 
   client.on("connect", () => console.info(`[Redis:${name}] Connected`));
   client.on("ready", () => console.info(`[Redis:${name}] Ready`));
-  client.on("close", () => console.warn(`[Redis:${name}] Connection closed`));
+  // client.on("close", () => console.info(`[Redis:${name}] Connection closed`));
   client.on("error", (err: Error) =>
     console.error(`[Redis:${name}] Error:`, err.message)
   );
@@ -103,11 +103,7 @@ export class RedisService {
 
   // ── Sessions ───────────────────────────────────────────────────────────────
 
-  async setSession(
-    userId: string,
-    data: object,
-    ttl: number = 86_400
-  ): Promise<void> {
+  async setSession(userId: string, data: object, ttl = 86_400): Promise<void> {
     await this.set(`${SESSION_PREFIX}${userId}`, data, ttl);
   }
 
@@ -118,7 +114,6 @@ export class RedisService {
   async deleteSession(userId: string): Promise<void> {
     await this.del(`${SESSION_PREFIX}${userId}`);
   }
-
   // ── Rate Limiting ──────────────────────────────────────────────────────────
 
   /**

@@ -6,17 +6,13 @@
             "ES2022"
         ],
         "outDir": "./dist",
-        "rootDir": "./src",
+        "rootDir": ".",
         "strict": true,
         "strictNullChecks": true,
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "moduleResolution": "node16",
         "isolatedModules": true,
-        "types": [
-            "jest",
-            "node"
-        ],
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
@@ -26,15 +22,23 @@
         "noUnusedParameters": true,
         "noImplicitReturns": true,
         "forceConsistentCasingInFileNames": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
     },
     "include": [
         "src/**/*",
-        "__tests__/**/*"
+        "__tests__/**/*",
+        "src/server.ts"
+    ],
+    "references": [
+        {
+            "path": "./tsconfig.test.json"
+        }
     ],
     "exclude": [
         "node_modules",
-        "dist",
-        "**/*.test.ts"
-    ]
+        "dist"
+    ],
+    "ts-node": {
+        "files": true
+    }
 }

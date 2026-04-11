@@ -11,20 +11,20 @@ jest.mock("ioredis", () => {
   const build = () => {
     const inst = {
       connect: jest.fn().mockResolvedValue(undefined),
-      quit:    jest.fn().mockResolvedValue(undefined),
-      get:     jest.fn().mockResolvedValue(null),
-      set:     jest.fn().mockResolvedValue("OK"),
-      del:     jest.fn().mockResolvedValue(1),
-      scan:    jest.fn().mockResolvedValue(["0", []]),
-      mget:    jest.fn().mockResolvedValue([]),
-      rpush:   jest.fn().mockResolvedValue(1),
-      lpop:    jest.fn().mockResolvedValue(null),
+      quit: jest.fn().mockResolvedValue(undefined),
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue("OK"),
+      del: jest.fn().mockResolvedValue(1),
+      scan: jest.fn().mockResolvedValue(["0", []]),
+      mget: jest.fn().mockResolvedValue([]),
+      rpush: jest.fn().mockResolvedValue(1),
+      lpop: jest.fn().mockResolvedValue(null),
       publish: jest.fn().mockResolvedValue(1),
       subscribe: jest.fn().mockResolvedValue(undefined),
       pipeline: jest.fn(() => ({
-        incr:   jest.fn().mockReturnThis(),
+        incr: jest.fn().mockReturnThis(),
         expire: jest.fn().mockReturnThis(),
-        exec:   jest.fn().mockResolvedValue([[null, 0], [null, "OK"]]),
+        exec: jest.fn().mockResolvedValue([[null, 0], [null, "OK"]]),
       })),
       on: jest.fn(),
     };
@@ -108,7 +108,7 @@ describe("RedisService", () => {
 
     // Grab the 3 instances in creation order
     const mocks = getMocks();
-    main      = mocks[0]!;
+    main = mocks[0]!;
     publisher = mocks[1]!;
     subscriber = mocks[2]!;
 
@@ -122,9 +122,9 @@ describe("RedisService", () => {
 
     // Wire pipeline exec to a controllable mock on main
     main.pipeline.mockImplementation(() => ({
-      incr:   jest.fn().mockReturnThis(),
+      incr: jest.fn().mockReturnThis(),
       expire: jest.fn().mockReturnThis(),
-      exec:   jest.fn().mockResolvedValue([[null, 0], [null, "OK"]]),
+      exec: jest.fn().mockResolvedValue([[null, 0], [null, "OK"]]),
     }));
 
     await service.connect();
@@ -244,9 +244,9 @@ describe("RedisService", () => {
     });
 
     it("calls INCR and EXPIRE via pipeline", async () => {
-      const incrMock   = jest.fn().mockReturnThis();
+      const incrMock = jest.fn().mockReturnThis();
       const expireMock = jest.fn().mockReturnThis();
-      const execMock   = jest.fn().mockResolvedValue([[null, 1], [null, "OK"]]);
+      const execMock = jest.fn().mockResolvedValue([[null, 1], [null, "OK"]]);
       main.pipeline.mockReturnValueOnce({ incr: incrMock, expire: expireMock, exec: execMock });
 
       await service.incrementRateLimit("rl:user:99", 30);
