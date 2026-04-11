@@ -1,6 +1,6 @@
 node_modules
 # Keep environment variables out of version control
 .env
-architecture.md
-roadmap.md
+ARCHITECTURE.md
+ROADMAP.md
 *.private.md
