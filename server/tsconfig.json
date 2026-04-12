@@ -27,7 +27,7 @@
     "include": [
         "src/**/*",
         "__tests__/**/*",
-        "src/server.ts"
+        "src/index.ts"
     ],
     "references": [
         {
