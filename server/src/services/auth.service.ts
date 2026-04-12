@@ -112,12 +112,15 @@ export class AuthService {
       ACCESS_TOKEN_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL }
     );
+    console.log("accessToken:", accessToken);
 
     const refreshToken = jwt.sign(
       { ...payload, jti: uuidv4() },  // ← jti ייחודי
       REFRESH_TOKEN_SECRET,
       { expiresIn: REFRESH_TOKEN_TTL }
+
     );
+    console.log("refreshToken:", refreshToken);
 
     const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000);
 

@@ -60,6 +60,33 @@ const tasksListKey = (filters: TaskFilters, pagination: Pagination) =>
   `cache:tasks:list:${CACHE_VERSION}:${JSON.stringify({ filters, pagination })}`;
 const taskDetailKey = (id: string) => `cache:tasks:detail:${CACHE_VERSION}:${id}`;
 
+// ─── Cache Performance Helpers ────────────────────────────────────────────────
+
+/**
+ * Wraps a Redis GET with performance counters and debug logging.
+ *
+ * On HIT  → increments `stats:cache:hit`  and logs duration.
+ * On MISS → increments `stats:cache:miss` and logs the key for tracing.
+ *
+ * Returns the parsed value or null (same contract as redisService.get).
+ */
+async function cachedGet<T>(cacheKey: string): Promise<{ value: T | null; hit: boolean }> {
+  const startNs = process.hrtime.bigint();
+  const value = await redisService.get<T>(cacheKey);
+  const durationMs = Number((process.hrtime.bigint() - startNs) / 1_000_000n);
+
+  if (value !== null) {
+    // Fire-and-forget counter — never block the hot path
+    redisService.incr('stats:cache:hit').catch(() => undefined);
+    logger.debug(`Cache HIT for ${cacheKey} (${durationMs}ms)`);
+    return { value, hit: true };
+  }
+
+  redisService.incr('stats:cache:miss').catch(() => undefined);
+  logger.debug(`Cache MISS → DB query pending for ${cacheKey}`);
+  return { value: null, hit: false };
+}
+
 // ─── TaskService ──────────────────────────────────────────────────────────────
 
 export class TaskService {
@@ -126,13 +153,20 @@ export class TaskService {
 
   async getTasks(
     filters: TaskFilters,
-    pagination: Pagination
+    pagination: Pagination,
+    /** Populated by metricsMiddleware — marks the response as a cache hit */
+    setCacheHit?: (hit: boolean) => void
   ): Promise<PaginatedResult<Task>> {
     const cacheKey = tasksListKey(filters, pagination);
 
     // Cache-aside: try Redis first (TTL 5 min)
-    const cached = await redisService.get<PaginatedResult<Task>>(cacheKey);
+    const { value: cached, hit } = await cachedGet<PaginatedResult<Task>>(cacheKey);
+    setCacheHit?.(hit);
+
     if (cached) return cached;
+
+    // ── DB query (cache miss) ────────────────────────────────────────────────
+    const dbStart = process.hrtime.bigint();
 
     const { page, limit } = pagination;
     const skip = (page - 1) * limit;
@@ -167,6 +201,9 @@ export class TaskService {
       prisma.task.count({ where }),
     ]);
 
+    const dbMs = Number((process.hrtime.bigint() - dbStart) / 1_000_000n);
+    logger.debug(`Cache MISS → DB query (${dbMs}ms) for ${cacheKey}`);
+
     const result: PaginatedResult<Task> = {
       data: tasks as Task[],
       meta: {
@@ -185,12 +222,20 @@ export class TaskService {
 
   // ── getTaskById ─────────────────────────────────────────────────────────────
 
-  async getTaskById(id: string): Promise<Task & { messages: Message[] }> {
+  async getTaskById(
+    id: string,
+    setCacheHit?: (hit: boolean) => void
+  ): Promise<Task & { messages: Message[] }> {
     const cacheKey = taskDetailKey(id);
 
     // Cache-aside: try Redis first (TTL 2 min)
-    const cached = await redisService.get<Task & { messages: Message[] }>(cacheKey);
+    const { value: cached, hit } = await cachedGet<Task & { messages: Message[] }>(cacheKey);
+    setCacheHit?.(hit);
+
     if (cached) return cached;
+
+    // ── DB query (cache miss) ────────────────────────────────────────────────
+    const dbStart = process.hrtime.bigint();
 
     const task = await prisma.task.findUnique({
       where: { id },
@@ -218,6 +263,9 @@ export class TaskService {
         },
       },
     });
+
+    const dbMs = Number((process.hrtime.bigint() - dbStart) / 1_000_000n);
+    logger.debug(`Cache MISS → DB query (${dbMs}ms) for ${cacheKey}`);
 
     if (!task) throw new NotFoundError(`Task ${id} not found`);
 

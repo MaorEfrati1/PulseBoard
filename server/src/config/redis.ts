@@ -23,11 +23,36 @@ function createClient(name: string): Redis {
   return client;
 }
 
+// ─── Redis INFO parser ────────────────────────────────────────────────────────
+
+function parseRedisInfo(raw: string): Record<string, string> {
+  return raw
+    .split('\r\n')
+    .filter((line) => line.includes(':'))
+    .reduce<Record<string, string>>((acc, line) => {
+      const [key, ...rest] = line.split(':');
+      acc[key.trim()] = rest.join(':').trim();
+      return acc;
+    }, {});
+}
+
+// ─── RedisInfo shape returned by getRedisInfo() ───────────────────────────────
+
+export interface RedisMemoryInfo {
+  memoryUsedMb: number;
+  memoryPeakMb: number;
+  connectedClients: number;
+  hitRate: string;
+  missRate: string;
+}
+
+// ─── RedisService ─────────────────────────────────────────────────────────────
+
 export class RedisService {
   private main: Redis;
   private publisher: Redis;
   private subscriber: Redis;
-  private connected = false; // guard — prevents double-connect errors
+  private connected = false;
 
   constructor() {
     this.main = createClient("main");
@@ -83,6 +108,14 @@ export class RedisService {
 
   async del(key: string): Promise<void> {
     await this.main.del(key);
+  }
+
+  /**
+   * Increments a counter key by 1. Creates the key if it does not exist.
+   * Used for cache hit/miss stats.
+   */
+  async incr(key: string): Promise<number> {
+    return this.main.incr(key);
   }
 
   /**
@@ -197,6 +230,71 @@ export class RedisService {
     const keys = userIds.map((id) => `${ONLINE_PREFIX}${id}`);
     const values = await this.main.mget(...keys);
     return userIds.filter((_, i) => values[i] !== null);
+  }
+
+  // ── Metrics Circular Buffer ────────────────────────────────────────────────
+
+  /**
+   * Pushes one JSON metric entry to the head of `key`.
+   * Trims the list to `maxLength` and sets a TTL on each push
+   * (ioredis pipeline keeps this to a single round-trip).
+   *
+   * Used exclusively by metricsMiddleware.
+   */
+  async lpushMetric(
+    key: string,
+    payload: string,
+    maxLength: number,
+    ttlSeconds: number
+  ): Promise<void> {
+    const pipeline = this.main.pipeline();
+    pipeline.lpush(key, payload);
+    pipeline.ltrim(key, 0, maxLength - 1);
+    pipeline.expire(key, ttlSeconds);
+    await pipeline.exec();
+  }
+
+  /**
+   * Returns up to `count` raw JSON strings from the metrics list.
+   * Used by getMetricsSummary() in the metrics middleware.
+   */
+  async lrangeMetrics(key: string, start: number, stop: number): Promise<string[]> {
+    return this.main.lrange(key, start, stop);
+  }
+
+  // ── Health / Diagnostics ───────────────────────────────────────────────────
+
+  /**
+   * Sends PING to the main Redis client.
+   * Returns 'PONG' on success.
+   */
+  async ping(): Promise<string> {
+    return this.main.ping();
+  }
+
+  /**
+   * Parses Redis INFO stats into a structured object for the health endpoint.
+   * Reads from `used_memory`, `used_memory_peak`, `connected_clients`,
+   * `keyspace_hits`, and `keyspace_misses`.
+   */
+  async getRedisInfo(): Promise<RedisMemoryInfo> {
+    const raw = await this.main.info();
+    const info = parseRedisInfo(raw);
+
+    const usedBytes = parseInt(info['used_memory'] ?? '0', 10);
+    const peakBytes = parseInt(info['used_memory_peak'] ?? '0', 10);
+    const clients = parseInt(info['connected_clients'] ?? '0', 10);
+    const hits = parseInt(info['keyspace_hits'] ?? '0', 10);
+    const misses = parseInt(info['keyspace_misses'] ?? '0', 10);
+    const total = hits + misses;
+
+    return {
+      memoryUsedMb: Math.round((usedBytes / 1024 / 1024) * 100) / 100,
+      memoryPeakMb: Math.round((peakBytes / 1024 / 1024) * 100) / 100,
+      connectedClients: clients,
+      hitRate: total > 0 ? `${Math.round((hits / total) * 100)}%` : '0%',
+      missRate: total > 0 ? `${Math.round((misses / total) * 100)}%` : '0%',
+    };
   }
 
   // ── Raw clients ────────────────────────────────────────────────────────────

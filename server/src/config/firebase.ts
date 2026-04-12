@@ -47,8 +47,10 @@ function getStorage(): admin.storage.Storage | null {
   return admin.storage();
 }
 
-export const firestore = getFirestore();
-export const fcm = getMessaging();
+export const firestore: admin.firestore.Firestore | null = getFirestore();
+// Explicit type annotation prevents ts(2883) — TypeScript cannot name the
+// inferred type of Messaging without a direct import of the internal module.
+export const fcm: admin.messaging.Messaging | null = getMessaging();
 export const storage: admin.storage.Storage | null = getStorage();
 
 // ─── Activity Feed Interface ──────────────────────────────────────────────────
@@ -88,6 +90,22 @@ class FirestoreService {
     };
 
     await firestore.collection(this.ACTIVITY_FEED_COLLECTION).add(entry);
+  }
+
+  /**
+   * Verifies Firestore connectivity by attempting a lightweight document read.
+   * Throws if the connection fails — does NOT throw if the doc simply
+   * doesn't exist (that is expected and perfectly fine).
+   *
+   * Called by HealthService.getHealthReport().
+   */
+  async healthCheck(): Promise<void> {
+    if (!firestore) {
+      throw new Error("Firestore client is not initialized");
+    }
+    // A get() on a non-existent doc succeeds (exists = false).
+    // It will only throw on auth / network failures — exactly what we need.
+    await firestore.collection("_health").doc("ping").get();
   }
 }
 
