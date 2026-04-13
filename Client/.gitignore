@@ -1,0 +1,61 @@
+# ============================================================
+#  CLIENT .gitignore  (React Native / Expo / TypeScript)
+# ============================================================
+
+# ── Dependencies ────────────────────────────────────────────
+node_modules/
+
+# ── Expo ────────────────────────────────────────────────────
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# ── EAS / Builds ────────────────────────────────────────────
+*.ipa
+*.apk
+*.aab
+*.jks
+*.keystore
+android/app/debug.keystore
+
+# ── Native generated folders (if ejected) ───────────────────
+android/
+ios/
+
+# ── TypeScript ──────────────────────────────────────────────
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# ── Environment & Secrets ───────────────────────────────────
+.env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+firebase-config.ts
+firebase-config.js
+
+# ── Metro bundler cache ─────────────────────────────────────
+.metro-health-check*
+.metro/
+
+# ── Testing ─────────────────────────────────────────────────
+coverage/
+.jest-cache/
+
+# ── Logs ────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Misc ────────────────────────────────────────────────────
+.cache/
+*.bak
+*.tmp
