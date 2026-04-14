@@ -11,14 +11,14 @@ const router = Router();
 
 const insightSchema = z.object({
   body: z.object({
-    taskId:  z.string().uuid(),
+    taskId: z.string().uuid(),
     context: z.string().max(4000).optional(),
   }),
 });
 
 const suggestSchema = z.object({
   body: z.object({
-    title:       z.string().min(1).max(200),
+    title: z.string().min(1).max(200),
     description: z.string().max(2000).optional(),
   }),
 });
@@ -43,9 +43,9 @@ router.post(
       taskId,
       context,
       requestedBy: req.user!.userId,
-      insight:     'AI analysis queued — results will arrive via WebSocket',
-      severity:    'info',
-      timestamp:   new Date().toISOString(),
+      insight: 'AI analysis queued — results will arrive via WebSocket',
+      severity: 'info',
+      timestamp: new Date().toISOString(),
     });
 
     res.status(202).json({
@@ -70,20 +70,20 @@ router.post(
     // Replace this block with your LLM / AI service call.
     const suggestion = {
       priority: 'MEDIUM',
-      tags:     [] as string[],
-      summary:  `Auto-generated summary for: ${title}`,
-      _note:    'Stub — wire up your AI service here',
+      tags: [] as string[],
+      summary: `Auto-generated summary for: ${title}`,
+      _note: 'Stub — wire up your AI service here',
     };
 
     // Naive keyword heuristics so the stub returns something useful in dev
     const text = `${title} ${description ?? ''}`.toLowerCase();
     if (/urgent|blocker|critical|asap/.test(text)) suggestion.priority = 'URGENT';
-    else if (/bug|fix|crash|error/.test(text))     suggestion.priority = 'HIGH';
-    else if (/chore|refactor|cleanup/.test(text))  suggestion.priority = 'LOW';
+    else if (/bug|fix|crash|error/.test(text)) suggestion.priority = 'HIGH';
+    else if (/chore|refactor|cleanup/.test(text)) suggestion.priority = 'LOW';
 
-    if (/bug|error|crash/.test(text))  suggestion.tags.push('bug');
-    if (/ui|design|style/.test(text))  suggestion.tags.push('ui');
-    if (/api|backend|db/.test(text))   suggestion.tags.push('backend');
+    if (/bug|error|crash/.test(text)) suggestion.tags.push('bug');
+    if (/ui|design|style/.test(text)) suggestion.tags.push('ui');
+    if (/api|backend|db/.test(text)) suggestion.tags.push('backend');
     if (/test|spec|coverage/.test(text)) suggestion.tags.push('testing');
 
     res.json({ data: suggestion });

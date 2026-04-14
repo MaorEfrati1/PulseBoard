@@ -1,5 +1,7 @@
 import { api } from './axios';
-import { TokenPair, User } from '../types';
+import { User, TokenPair } from '../types';
+
+// ─── Payload Types ────────────────────────────────────────────────────────────
 
 export interface LoginPayload {
     email: string;
@@ -7,9 +9,9 @@ export interface LoginPayload {
 }
 
 export interface RegisterPayload {
+    fullName: string;
     email: string;
     password: string;
-    fullName: string;
 }
 
 export interface AuthResponse {
@@ -17,27 +19,25 @@ export interface AuthResponse {
     tokens: TokenPair;
 }
 
-export interface RefreshResponse {
-    accessToken: string;
-    refreshToken: string;
-}
+// ─── API ──────────────────────────────────────────────────────────────────────
 
 const authApi = {
-    login: (payload: LoginPayload) =>
+    login: (payload: LoginPayload): Promise<AuthResponse> =>
         api.post<AuthResponse>('/auth/login', payload).then((r) => r.data),
 
-    register: (payload: RegisterPayload) =>
+    register: (payload: RegisterPayload): Promise<AuthResponse> =>
         api.post<AuthResponse>('/auth/register', payload).then((r) => r.data),
 
-    refresh: (refreshToken: string) =>
+    logout: (): Promise<void> =>
+        api.post('/auth/logout').then(() => undefined),
+
+    refreshToken: (refreshToken: string): Promise<TokenPair> =>
         api
-            .post<RefreshResponse>('/auth/refresh', { refreshToken })
+            .post<TokenPair>('/auth/refresh', { refreshToken })
             .then((r) => r.data),
 
-    logout: (refreshToken: string) =>
-        api.post('/auth/logout', { refreshToken }).then((r) => r.data),
-
-    me: () => api.get<User>('/auth/me').then((r) => r.data),
+    me: (): Promise<User> =>
+        api.get<User>('/auth/me').then((r) => r.data),
 };
 
 export default authApi;

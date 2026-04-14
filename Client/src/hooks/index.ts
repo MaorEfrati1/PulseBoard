@@ -5,3 +5,5 @@ export { usePushNotifications } from './usePushNotifications';
 export { useNetworkStatus } from './useNetworkStatus';
 export { useOfflineSync } from './useOfflineSync';
 export { useAI } from './useAI';
+export { useOnlinePresence } from './useOnlinePresence';
+export { useAISummary } from './useAISummary';

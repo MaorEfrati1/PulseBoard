@@ -40,11 +40,21 @@ async function executeAction(action: QueuedAction): Promise<void> {
       await api.delete(action.endpoint);
       break;
     default:
-      throw new Error(`Unknown queued action type: ${(action as QueuedAction).type}`);
+      throw new Error(
+        `Unknown queued action type: ${(action as QueuedAction).type}`,
+      );
   }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface UseOfflineSyncOptions {
+  /**
+   * Called after a successful sync so callers (e.g. useTasks) can
+   * re-fetch fresh data from the server.
+   */
+  onSyncComplete?: (result: SyncResult) => void;
+}
 
 interface UseOfflineSyncReturn {
   isSyncing: boolean;
@@ -58,7 +68,11 @@ interface UseOfflineSyncReturn {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useOfflineSync(): UseOfflineSyncReturn {
+export function useOfflineSync(
+  options: UseOfflineSyncOptions = {},
+): UseOfflineSyncReturn {
+  const { onSyncComplete } = options;
+
   const { isOnline } = useNetworkStatus();
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -103,7 +117,8 @@ export function useOfflineSync(): UseOfflineSyncReturn {
         await executeAction(action);
         result.synced += 1;
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
+        const message =
+          err instanceof Error ? err.message : 'Unknown error';
         const updatedRetries = action.retries + 1;
 
         if (updatedRetries < MAX_RETRIES) {
@@ -113,6 +128,10 @@ export function useOfflineSync(): UseOfflineSyncReturn {
           // Permanently failed — log and discard
           result.failed += 1;
           result.errors.push({ actionId: action.id, message });
+          console.warn(
+            `[OfflineSync] Action ${action.id} permanently failed:`,
+            message,
+          );
         }
       }
     }
@@ -127,8 +146,13 @@ export function useOfflineSync(): UseOfflineSyncReturn {
       setLastSyncResult(result);
     }
 
+    // ── Notify caller so it can re-fetch fresh server data ──────────────────
+    if (result.synced > 0) {
+      onSyncComplete?.(result);
+    }
+
     return result;
-  }, []);
+  }, [onSyncComplete]);
 
   // ── Clear queue ─────────────────────────────────────────────────────────────
 

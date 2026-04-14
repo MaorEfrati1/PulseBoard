@@ -6,6 +6,7 @@ import NetInfo, {
 } from '@react-native-community/netinfo';
 
 import { NetworkStatus } from '../types';
+import { useUIStore } from '../store/ui.store';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,9 @@ interface UseNetworkStatusReturn {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useNetworkStatus(): UseNetworkStatusReturn {
-  const [networkStatus, setNetworkStatus] = useState<NetworkStatus>('online');
+  const setNetworkStatus = useUIStore((s) => s.setNetworkStatus);
+
+  const [networkStatus, setLocalStatus] = useState<NetworkStatus>('online');
   const [isInternetReachable, setIsInternetReachable] = useState(true);
 
   // ── Resolve raw NetInfo state → our NetworkStatus type ─────────────────────
@@ -40,32 +43,38 @@ export function useNetworkStatus(): UseNetworkStatusReturn {
     return reachable ? 'online' : 'reconnecting';
   }, []);
 
+  // ── Apply status to both local state and global store ──────────────────────
+
+  const applyStatus = useCallback(
+    (state: NetInfoState) => {
+      const status = resolveStatus(state);
+      setLocalStatus(status);
+      setNetworkStatus(status);           // ← keep ui.store in sync
+      setIsInternetReachable(state.isInternetReachable ?? true);
+    },
+    [resolveStatus, setNetworkStatus],
+  );
+
   // ── Subscribe to network changes ───────────────────────────────────────────
 
   useEffect(() => {
     // Fetch initial state immediately
-    NetInfo.fetch().then((state) => {
-      setNetworkStatus(resolveStatus(state));
-      setIsInternetReachable(state.isInternetReachable ?? true);
-    });
+    NetInfo.fetch().then(applyStatus);
 
-    const unsubscribe: NetInfoSubscription = NetInfo.addEventListener((state) => {
-      setNetworkStatus(resolveStatus(state));
-      setIsInternetReachable(state.isInternetReachable ?? true);
-    });
+    const unsubscribe: NetInfoSubscription =
+      NetInfo.addEventListener(applyStatus);
 
     return () => {
       unsubscribe();
     };
-  }, [resolveStatus]);
+  }, [applyStatus]);
 
   // ── Manual recheck ─────────────────────────────────────────────────────────
 
   const recheck = useCallback(async (): Promise<void> => {
     const state = await NetInfo.fetch();
-    setNetworkStatus(resolveStatus(state));
-    setIsInternetReachable(state.isInternetReachable ?? true);
-  }, [resolveStatus]);
+    applyStatus(state);
+  }, [applyStatus]);
 
   return {
     networkStatus,
