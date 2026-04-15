@@ -32,7 +32,7 @@ try {
 } catch {
   console.warn(
     '[usePushNotifications] expo-notifications or expo-device is not installed.\n' +
-      'Run: npx expo install expo-notifications expo-device',
+    'Run: npx expo install expo-notifications expo-device',
   );
 }
 
@@ -69,8 +69,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [lastNotificationResponse, setLastNotificationResponse] =
     useState<PushNotificationData | null>(null);
 
-  const notificationListenerRef = useRef<unknown>(null);
-  const responseListenerRef = useRef<unknown>(null);
+  // FIX: store the subscription objects directly (they have .remove())
+  const notificationListenerRef = useRef<{ remove: () => void } | null>(null);
+  const responseListenerRef = useRef<{ remove: () => void } | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -87,7 +88,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
+        // FIX: expo-notifications ~0.32.x replaced shouldShowAlert
+        // with shouldShowBanner + shouldShowList
+        shouldShowBanner: true,
+        shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
       }),
@@ -187,22 +191,10 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       });
 
     return () => {
-      if (Notifications) {
-        if (notificationListenerRef.current) {
-          Notifications.removeNotificationSubscription(
-            notificationListenerRef.current as ReturnType<
-              typeof Notifications.addNotificationReceivedListener
-            >,
-          );
-        }
-        if (responseListenerRef.current) {
-          Notifications.removeNotificationSubscription(
-            responseListenerRef.current as ReturnType<
-              typeof Notifications.addNotificationResponseReceivedListener
-            >,
-          );
-        }
-      }
+      // FIX: use .remove() directly on the subscription object
+      // removeNotificationSubscription was removed in expo-notifications ~0.32.x
+      notificationListenerRef.current?.remove();
+      responseListenerRef.current?.remove();
     };
   }, []);
 
